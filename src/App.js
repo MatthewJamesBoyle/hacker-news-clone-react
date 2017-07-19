@@ -1,24 +1,10 @@
 import React, { Component } from 'react';
 import './App.css';
 
- const list = [
-  {
-    title: 'React',
-    url: 'http://www.mattboyle.com',
-    author: 'Matt Boyle',
-    num_comments: 3,
-    points: 4,
-    objectID: 0
-  },
-   {
-    title: 'Redux',
-    url: 'http://www.crowdcube.com',
-    author: 'Mattey',
-    num_comments: 3,
-    points: 4,
-    objectID: 1
-  },
-];
+const DEFAULT_QUERY = 'redux';
+const PATH_BASE = 'https://hn.algolia.com/api/v1';
+const PATH_SEARCH = '/search';
+const PARAM_SEARCH = 'query=';
 
 function isSearched(searchTerm) {
 return function(item) {
@@ -32,14 +18,35 @@ class App extends Component {
     super(props);
   
     this.state = {
-      list,
-      searchTerm:'',
+     result: null,
+     searchTerm: DEFAULT_QUERY,
     }
+    this.setSearchTopStories = this.setSearchTopStories.bind(this);
+    this.fetchSearchTopStories = this.fetchSearchTopStories.bind(this);
     this.onDismiss = this.onDismiss.bind(this);
     this.onSearchChanged = this.onSearchChanged.bind(this);
+
+   
   }
+
+ setSearchTopStories(result) {
+      this.setState({ result });
+    }
+
+  fetchSearchTopStories(searchTerm) {
+    fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}`)
+      .then(response => response.json())
+      .then(result => this.setSearchTopStories(result))
+      .catch(e => e);
+}
+
+componentDidMount() {
+    const { searchTerm } = this.state;
+    this.fetchSearchTopStories(searchTerm);
+}
+
   render() {
-    const {searchTerm,list} = this.state;
+    const {searchTerm,result} = this.state;
     return (
       <div className="Page">
         <div className="interactions">
@@ -49,18 +56,20 @@ class App extends Component {
           Search
         </Search>
         </div>
-        <Table
-          list={list}
+        {result &&
+           <Table
+          list={result.hits}
           pattern={searchTerm}
           onDismiss={this.onDismiss}/>
+        }
       </div>
     );
   }
   onDismiss(itemId) {
-    const updatedList = this.state.list.filter(item => item.objectID !== itemId);
+    const updatedHits = this.state.result.hits.filter(item => item.objectID !== itemId);
     this.setState({
-      list: updatedList
-    })
+      result: {...this.state.result,hits: updatedHits}}
+    );
 
   }
 
@@ -116,7 +125,6 @@ const Table = ({list,pattern,onDismiss}) =>
       onClick={onClick}
       className={className}
       type="button"
-      className="button-inline"
       >
       {children}
       </button>
